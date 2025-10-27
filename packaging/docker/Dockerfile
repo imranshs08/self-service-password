@@ -6,7 +6,7 @@ ARG SMARTY_URL=https://github.com/smarty-php/smarty/archive/refs/tags/v${SMARTY_
 ARG COMPOSER_VERSION=lts
 ARG COMPOSER_IMAGE=composer/composer:${COMPOSER_VERSION}-bin
 
-ARG BASE_IMAGE=php:8.4-apache
+ARG BASE_IMAGE=php:8.4.1-apache
 
 FROM ${COMPOSER_IMAGE} AS composer
 FROM ${BASE_IMAGE} AS base
@@ -86,6 +86,7 @@ RUN --mount=type=cache,target=/var/lib/apt/lists \
     \
     apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
     apt-get purge -y linux-libc-dev gcc-12 cpp-12; \
+    rm -rf /var/lib/apt/lists/*;\
     ln -s "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"; \
     :;
 
@@ -122,6 +123,10 @@ RUN --mount=type=cache,target=/root/.composer \
     sed -e "s#/var/www/html#/var/www/htdocs#g" -i /rootfs/etc/apache2/sites-available/*; \
     :;
 
+# Clean up temporary files and caches to reduce image size
+RUN rm -rf /root/.composer /tmp/* /var/tmp/* /var/lib/apt/lists/*
+
+
 FROM base
 
 ARG VERSION
@@ -146,6 +151,19 @@ WORKDIR /var/www/htdocs
 VOLUME [ "/var/www/templates_c", "/var/www/conf", "/var/www/cache" ]
 
 EXPOSE 80
+
+# Healthcheck to ensure Apache and PHP app are responsive
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD curl -fs http://localhost/ || exit 1
+
+  
+# Final cleanup
+RUN rm -rf /tmp/* /var/tmp/* /var/lib/apt/lists/*
+
+# Switch to non-root user for better security
+USER www-data
+
+
 
 ENTRYPOINT [ "/entrypoint.sh" ]
 CMD [ "apache2-foreground" ]
