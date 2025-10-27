@@ -11,6 +11,18 @@ ARG BASE_IMAGE=php:8.4.1-apache
 FROM ${COMPOSER_IMAGE} AS composer
 FROM ${BASE_IMAGE} AS base
 
+# --- Security Patch Stage --- 🆕 added
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --only-upgrade \
+        apache2 \
+        libxml2 \
+        expat \
+        perl \
+        sqlite3; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/*  # 🆕 added
+
 ARG MIRROR=
 ARG DEBIAN_MIRROR=${MIRROR:+${MIRROR}/debian}
 
@@ -126,12 +138,12 @@ RUN --mount=type=cache,target=/root/.composer \
 # Clean up temporary files and caches to reduce image size
 RUN rm -rf /root/.composer /tmp/* /var/tmp/* /var/lib/apt/lists/*
 
-
 FROM base
 
 ARG VERSION
 ARG BASE_IMAGE
 
+#license metadata updated
 LABEL org.opencontainers.image.authors='LTB-project.org, ltb-dev@ow2.org' \
       org.opencontainers.image.base.name="${BASE_IMAGE}" \
       org.opencontainers.image.description='Self Service Password is a simple PHP application that allows users to change their password on an LDAP directory' \
@@ -142,7 +154,7 @@ LABEL org.opencontainers.image.authors='LTB-project.org, ltb-dev@ow2.org' \
       org.opencontainers.image.source='https://github.com/ltb-project/self-service-password/' \
       org.opencontainers.image.vendor='LTB-project.org' \
       org.opencontainers.image.version="${VERSION}" \
-      org.opencontainers.image.licenses='GPL-2+'
+      org.opencontainers.image.licenses='GPL-3+'  
 
 COPY --from=build /rootfs /
 
@@ -156,14 +168,11 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD curl -fs http://localhost/ || exit 1
 
-
 # Final cleanup
 RUN rm -rf /tmp/* /var/tmp/* /var/lib/apt/lists/*
 
 # Switch to non-root user for better security
 USER www-data
-
-
 
 ENTRYPOINT [ "/entrypoint.sh" ]
 CMD [ "apache2-foreground" ]
