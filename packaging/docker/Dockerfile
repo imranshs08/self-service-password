@@ -6,7 +6,11 @@ ARG SMARTY_URL=https://github.com/smarty-php/smarty/archive/refs/tags/v${SMARTY_
 ARG COMPOSER_VERSION=lts
 ARG COMPOSER_IMAGE=composer/composer:${COMPOSER_VERSION}-bin
 
-ARG BASE_IMAGE=php:8.4.1-apache
+ARG BASE_IMAGE=php:8.3.12-apache-bookworm
+
+
+
+
 
 FROM ${COMPOSER_IMAGE} AS composer
 FROM ${BASE_IMAGE} AS base
@@ -156,7 +160,7 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD curl -fs http://localhost/ || exit 1
 
-  
+
 # Final cleanup
 RUN rm -rf /tmp/* /var/tmp/* /var/lib/apt/lists/*
 
